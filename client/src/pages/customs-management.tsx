@@ -19,6 +19,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 export default function CustomsManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [formData, setFormData] = useState({
     shipmentId: '',
@@ -26,7 +27,15 @@ export default function CustomsManagement() {
     description: '',
     destination: '',
     status: 'pending',
-    progress: 0
+    progress: 0,
+    requiredDocuments: [
+      "Commercial Invoice",
+      "Packing List",
+      "Bill of Lading",
+      "Certificate of Origin",
+      "Import License",
+      "Customs Declaration Form"
+    ]
   });
   
   const { toast } = useToast();
@@ -88,7 +97,15 @@ export default function CustomsManagement() {
       description: '',
       destination: '',
       status: 'pending',
-      progress: 0
+      progress: 0,
+      requiredDocuments: [
+        "Commercial Invoice",
+        "Packing List",
+        "Bill of Lading",
+        "Certificate of Origin",
+        "Import License",
+        "Customs Declaration Form"
+      ]
     });
     setSelectedDocument(null);
   };
@@ -133,9 +150,22 @@ export default function CustomsManagement() {
       description: doc.description || '',
       destination: doc.destination,
       status: doc.status,
-      progress: doc.progress
+      progress: doc.progress,
+      requiredDocuments: doc.requiredDocuments || [
+        "Commercial Invoice",
+        "Packing List",
+        "Bill of Lading",
+        "Certificate of Origin",
+        "Import License",
+        "Customs Declaration Form"
+      ]
     });
     setIsEditDialogOpen(true);
+  };
+  
+  const handleViewDetails = (doc) => {
+    setSelectedDocument(doc);
+    setIsViewDetailsDialogOpen(true);
   };
 
   return (
@@ -251,7 +281,7 @@ export default function CustomsManagement() {
                               }`}>
                                 {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
                               </span>
-                              <Button variant="ghost" size="sm">View Details</Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleViewDetails(doc)}>View Details</Button>
                             </div>
                           </div>
                         ))}
