@@ -615,7 +615,21 @@ export default function CustomsManagement() {
               
               <DialogFooter>
                 {selectedDocument.status === 'pending' && (
-                  <Button variant="outline" className="mr-auto">
+                  <Button 
+                    variant="outline" 
+                    className="mr-auto"
+                    onClick={() => {
+                      updateDocumentMutation.mutate({
+                        id: selectedDocument._id,
+                        data: {
+                          ...formData,
+                          status: 'in progress',
+                          progress: 50
+                        }
+                      });
+                      setIsViewDetailsDialogOpen(false);
+                    }}
+                  >
                     Start Processing
                   </Button>
                 )}
