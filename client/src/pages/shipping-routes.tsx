@@ -170,7 +170,7 @@ export default function ShippingRoutes() {
                           <h3 className="text-sm font-medium text-neutral-500 mb-2">Transit Time</h3>
                           <div className="space-y-3">
                             {shippingRoutes?.slice(0, 4).map((route) => (
-                              <div key={route.id}>
+                              <div key={route._id}>
                                 <div className="flex justify-between mb-1">
                                   <span className="text-sm font-medium">{route.origin} to {route.destination}</span>
                                   <span className="text-sm">{route.transitTime.toFixed(1)} days</span>
@@ -197,7 +197,7 @@ export default function ShippingRoutes() {
                     <CardContent>
                       <div className="space-y-4">
                         {shippingRoutes?.slice(0, 3).map((route) => (
-                          <div key={route.id} className="border p-4 rounded-lg">
+                          <div key={route._id} className="border p-4 rounded-lg">
                             <div className="flex justify-between">
                               <h3 className="font-medium">{route.origin} to {route.destination}</h3>
                               <span className={`px-2 py-1 text-xs rounded-full ${
