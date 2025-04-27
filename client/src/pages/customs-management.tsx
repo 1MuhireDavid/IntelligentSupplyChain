@@ -350,13 +350,22 @@ export default function CustomsManagement() {
                                     </div>
                                   </td>
                                   <td className="py-3 px-3">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleEdit(doc)}
-                                    >
-                                      Edit
-                                    </Button>
+                                    <div className="flex space-x-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleViewDetails(doc)}
+                                      >
+                                        View
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleEdit(doc)}
+                                      >
+                                        Edit
+                                      </Button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -507,6 +516,115 @@ export default function CustomsManagement() {
               <Button type="submit">Create Document</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* View Details Dialog */}
+      <Dialog open={isViewDetailsDialogOpen} onOpenChange={setIsViewDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Customs Document Details</DialogTitle>
+            <DialogDescription>
+              View detailed information about this customs document.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDocument && (
+            <>
+              <div className="py-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium">{selectedDocument.title}</h3>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    selectedDocument.status === 'cleared' ? 'bg-green-100 text-green-800' :
+                    selectedDocument.status === 'in progress' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-neutral-200 text-neutral-600'
+                  }`}>
+                    {selectedDocument.status.charAt(0).toUpperCase() + selectedDocument.status.slice(1)}
+                  </span>
+                </div>
+                
+                <div className="grid gap-4">
+                  <div className="text-sm">
+                    <strong>Shipment ID:</strong> {selectedDocument.shipmentId}
+                  </div>
+                  
+                  <div className="text-sm">
+                    <strong>Destination:</strong> {selectedDocument.destination}
+                  </div>
+                  
+                  {selectedDocument.description && (
+                    <div className="text-sm mt-2">
+                      <strong>Description:</strong><br />
+                      {selectedDocument.description}
+                    </div>
+                  )}
+                  
+                  <div className="border-t pt-4 mt-2">
+                    <h4 className="font-medium mb-2">Required Documents for Customs Clearance</h4>
+                    <div className="border rounded-md p-3 bg-neutral-50">
+                      <ul className="space-y-2">
+                        {selectedDocument.requiredDocuments ? (
+                          selectedDocument.requiredDocuments.map((doc, index) => (
+                            <li key={index} className="flex items-center">
+                              <span className="inline-block w-4 h-4 bg-primary-100 text-primary-800 rounded-full mr-2 flex items-center justify-center text-xs">
+                                {index + 1}
+                              </span>
+                              {doc}
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-neutral-500">Standard customs documentation required.</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4 mt-2">
+                    <h4 className="font-medium mb-2">Clearance Progress</h4>
+                    <div className="space-y-2">
+                      <div className="w-full bg-neutral-100 rounded-full h-2.5">
+                        <div 
+                          className={`rounded-full h-2.5 ${
+                            selectedDocument.status === 'cleared' ? 'bg-green-500' :
+                            selectedDocument.status === 'in progress' ? 'bg-yellow-500' :
+                            'bg-neutral-400'
+                          }`} 
+                          style={{ width: `${selectedDocument.progress}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-neutral-500">
+                        <span>Document Preparation</span>
+                        <span>Submission</span>
+                        <span>Processing</span>
+                        <span>Cleared</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4 mt-2">
+                    <h4 className="font-medium mb-2">Customs Office Contact</h4>
+                    <div className="text-sm">
+                      <p>Rwanda Revenue Authority - Customs Department</p>
+                      <p>KN 4 Ave, Kigali</p>
+                      <p>Tel: +250 252 595 500</p>
+                      <p>Email: customs@rra.gov.rw</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                {selectedDocument.status === 'pending' && (
+                  <Button variant="outline" className="mr-auto">
+                    Start Processing
+                  </Button>
+                )}
+                <Button onClick={() => setIsViewDetailsDialogOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
       
