@@ -1,17 +1,142 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import BottomNav from "@/components/layout/bottom-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import CustomsStatusCard from "@/components/dashboard/customs-status-card";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function CustomsManagement() {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [formData, setFormData] = useState({
+    shipmentId: '',
+    title: '',
+    description: '',
+    destination: '',
+    status: 'pending',
+    progress: 0
+  });
+  
+  const { toast } = useToast();
+  
   const { data: customsDocuments, isLoading } = useQuery({
     queryKey: ["/api/customs-documents"],
   });
+  
+  const addDocumentMutation = useMutation({
+    mutationFn: async (data) => {
+      const response = await apiRequest('POST', '/api/customs-documents', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/customs-documents'] });
+      toast({
+        title: "Success",
+        description: "Customs document created successfully",
+      });
+      setIsAddDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create customs document",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const updateDocumentMutation = useMutation({
+    mutationFn: async ({ id, data }) => {
+      const response = await apiRequest('PUT', `/api/customs-documents/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/customs-documents'] });
+      toast({
+        title: "Success",
+        description: "Customs document updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update customs document",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const resetForm = () => {
+    setFormData({
+      shipmentId: '',
+      title: '',
+      description: '',
+      destination: '',
+      status: 'pending',
+      progress: 0
+    });
+    setSelectedDocument(null);
+  };
+  
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Auto-update progress based on status
+    if (name === 'status') {
+      let progress = 0;
+      if (value === 'in progress') progress = 50;
+      if (value === 'cleared') progress = 100;
+      setFormData(prev => ({ ...prev, progress }));
+    }
+  };
+  
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    addDocumentMutation.mutate(formData);
+  };
+  
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedDocument) return;
+    
+    updateDocumentMutation.mutate({
+      id: selectedDocument._id,
+      data: formData
+    });
+  };
+  
+  const handleEdit = (doc) => {
+    setSelectedDocument(doc);
+    setFormData({
+      shipmentId: doc.shipmentId,
+      title: doc.title,
+      description: doc.description || '',
+      destination: doc.destination,
+      status: doc.status,
+      progress: doc.progress
+    });
+    setIsEditDialogOpen(true);
+  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -30,7 +155,10 @@ export default function CustomsManagement() {
                   <p className="mt-1 text-neutral-600">Streamline your customs documentation and compliance</p>
                 </div>
                 <div className="flex mt-4 md:mt-0 space-x-2">
-                  <button className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">
+                  <button 
+                    onClick={() => setIsAddDialogOpen(true)}
+                    className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
                     <span className="mr-1">+</span> New Customs Document
                   </button>
                 </div>
@@ -110,7 +238,7 @@ export default function CustomsManagement() {
                     <CardContent>
                       <div className="space-y-4">
                         {customsDocuments?.slice(0, 3).map((doc) => (
-                          <div key={doc.id} className="border-l-4 border-primary p-4 bg-primary-50">
+                          <div key={doc._id} className="border-l-4 border-primary p-4 bg-primary-50">
                             <h3 className="font-medium">{doc.title}</h3>
                             <p className="text-sm text-neutral-600 mt-1">
                               Destination: {doc.destination}
@@ -166,7 +294,7 @@ export default function CustomsManagement() {
                             </thead>
                             <tbody className="divide-y divide-neutral-100">
                               {customsDocuments?.map((doc) => (
-                                <tr key={doc.id} className="text-sm text-neutral-800 hover:bg-neutral-50">
+                                <tr key={doc._id} className="text-sm text-neutral-800 hover:bg-neutral-50">
                                   <td className="py-3 px-3 font-medium">{doc.shipmentId}</td>
                                   <td className="py-3 px-3">{doc.title}</td>
                                   <td className="py-3 px-3">{doc.destination}</td>
@@ -192,7 +320,13 @@ export default function CustomsManagement() {
                                     </div>
                                   </td>
                                   <td className="py-3 px-3">
-                                    <Button variant="ghost" size="sm">Edit</Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => handleEdit(doc)}
+                                    >
+                                      Edit
+                                    </Button>
                                   </td>
                                 </tr>
                               ))}
@@ -246,6 +380,204 @@ export default function CustomsManagement() {
       </div>
 
       <BottomNav />
+      
+      {/* Add Customs Document Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Customs Document</DialogTitle>
+            <DialogDescription>
+              Create a new customs document for your shipment.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="shipmentId" className="text-right">
+                  Shipment ID
+                </Label>
+                <Input
+                  id="shipmentId"
+                  name="shipmentId"
+                  value={formData.shipmentId}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right">
+                  Title
+                </Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="destination" className="text-right">
+                  Destination
+                </Label>
+                <Input
+                  id="destination"
+                  name="destination"
+                  value={formData.destination}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="status" className="text-right">
+                  Status
+                </Label>
+                <Select
+                  name="status"
+                  value={formData.status}
+                  onValueChange={(value) => handleSelectChange('status', value)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in progress">In Progress</SelectItem>
+                    <SelectItem value="cleared">Cleared</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Create Document</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Customs Document Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Customs Document</DialogTitle>
+            <DialogDescription>
+              Update the customs document details.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleEditSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-shipmentId" className="text-right">
+                  Shipment ID
+                </Label>
+                <Input
+                  id="edit-shipmentId"
+                  name="shipmentId"
+                  value={formData.shipmentId}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-title" className="text-right">
+                  Title
+                </Label>
+                <Input
+                  id="edit-title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="edit-description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-destination" className="text-right">
+                  Destination
+                </Label>
+                <Input
+                  id="edit-destination"
+                  name="destination"
+                  value={formData.destination}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-status" className="text-right">
+                  Status
+                </Label>
+                <Select
+                  name="status"
+                  value={formData.status}
+                  onValueChange={(value) => handleSelectChange('status', value)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in progress">In Progress</SelectItem>
+                    <SelectItem value="cleared">Cleared</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Update Document</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
