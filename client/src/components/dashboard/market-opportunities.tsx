@@ -11,14 +11,9 @@ interface MarketOpportunitiesProps {
 
 export default function MarketOpportunities({ opportunities }: MarketOpportunitiesProps) {
   const queryClient = useQueryClient();
-  const [bookmarkStates, setBookmarkStates] = useState<Record<number, boolean>>({});
-  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ["/api/market-opportunities"] });
-    setIsRefreshing(false);
-  };
+  // State to track local bookmark status during mutations
+  const [bookmarkStates, setBookmarkStates] = useState<Record<number, boolean>>({});
   
   // Mutation for toggling bookmark status
   const bookmarkMutation = useMutation({
@@ -61,18 +56,7 @@ export default function MarketOpportunities({ opportunities }: MarketOpportuniti
     <Card className="border-neutral-100">
       <CardHeader className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
         <CardTitle className="text-base font-semibold">Market Opportunities</CardTitle>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? (
-            <span className="material-icons animate-spin">refresh</span>
-          ) : (
-            'Refresh'
-          )}
-        </Button>
+        <Button variant="outline" size="sm">Refresh</Button>
       </CardHeader>
       <CardContent className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

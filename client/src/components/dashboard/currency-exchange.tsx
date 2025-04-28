@@ -26,22 +26,7 @@ const defaultRates = [
 ];
 
 export default function CurrencyExchange({ rates }: CurrencyExchangeProps) {
-  const queryClient = useQueryClient();
   const [baseCurrency, setBaseCurrency] = useState('RWF');
-  
-  // Function to handle manual refresh
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/currency-exchange-rates"] });
-  };
-
-  // Set up auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      handleRefresh();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [queryClient]);
   
   // Use the provided rates or fall back to default ones
   const displayRates = rates && rates.length > 0 ? rates : defaultRates;
@@ -65,14 +50,9 @@ export default function CurrencyExchange({ rates }: CurrencyExchangeProps) {
     <Card className="border-neutral-100">
       <CardHeader className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
         <CardTitle className="text-base font-semibold">Currency Exchange</CardTitle>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-neutral-500">
-            Updated {displayRates[0] ? getUpdateTime(displayRates[0].lastUpdated) : '10m ago'}
-          </span>
-          <Button variant="ghost" size="sm" onClick={handleRefresh}>
-            <span className="material-icons text-sm">refresh</span>
-          </Button>
-        </div>
+        <span className="text-xs text-neutral-500">
+          Updated {displayRates[0] ? getUpdateTime(displayRates[0].lastUpdated) : '10m ago'}
+        </span>
       </CardHeader>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-4">
