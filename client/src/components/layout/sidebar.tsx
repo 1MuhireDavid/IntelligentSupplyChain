@@ -19,7 +19,7 @@ export default function Sidebar() {
         id="sidebar" 
         className={`bg-white w-64 shadow-lg fixed inset-y-0 left-0 transform ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 transition duration-300 ease-in-out z-10 pt-16 border-r border-neutral-200`}
+        } lg:translate-x-0 transition duration-300 ease-in-out z-1 pt-16 border-r border-neutral-200`}
         style={{ top: '61px' }}
       >
         <div className="h-full flex flex-col">
@@ -82,6 +82,47 @@ export default function Sidebar() {
                 <span className="font-medium">Shipping Routes</span>
               </a>
             </Link>
+            
+            {/* Admin-specific section */}
+            {user && user.role === 'admin' && (
+              <>
+                <div className="mt-6 px-4 mb-3">
+                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Admin Tools</p>
+                </div>
+                <Link href="/admin">
+                  <a className={`flex items-center px-4 py-3 ${
+                    location === '/admin' 
+                      ? 'text-primary bg-primary-50 border-l-4 border-primary' 
+                      : 'text-neutral-700 hover:bg-neutral-50 border-l-4 border-transparent'
+                  }`}>
+                    <span className="material-icons mr-3">analytics</span>
+                    <span className="font-medium">Dashboard</span>
+                  </a>
+                </Link>
+                
+                <Link href="/admin/users">
+                  <a className={`flex items-center px-4 py-3 ${
+                    location === '/admin/users' 
+                      ? 'text-primary bg-primary-50 border-l-4 border-primary' 
+                      : 'text-neutral-700 hover:bg-neutral-50 border-l-4 border-transparent'
+                  }`}>
+                    <span className="material-icons mr-3">people</span>
+                    <span className="font-medium">User Management</span>
+                  </a>
+                </Link>
+
+                <Link href="/admin/company-settings">
+                  <a className={`flex items-center px-4 py-3 ${
+                    location === '/company-settings' 
+                      ? 'text-primary bg-primary-50 border-l-4 border-primary' 
+                      : 'text-neutral-700 hover:bg-neutral-50 border-l-4 border-transparent'
+                  }`}>
+                    <span className="material-icons mr-3">corporate_fare</span>
+                    <span className="font-medium">Company Settings</span>
+                  </a>
+                </Link>
+              </>
+            )}
             
             <div className="mt-6 px-4 mb-3">
               <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Account</p>

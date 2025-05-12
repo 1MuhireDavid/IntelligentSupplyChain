@@ -4,6 +4,7 @@ import AdminSidebar from "@/components/layout/admin-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, UserPlus, Users, XCircle, CheckCircle } from "lucide-react";
 import { Redirect } from "wouter";
+import Sidebar from "@/components/layout/sidebar";
 
 interface User {
   _id: string;
@@ -60,7 +61,7 @@ const UserManagementPage: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
       <div className="flex flex-1">
-        <AdminSidebar />
+        <Sidebar />
         <main className="flex-1 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">

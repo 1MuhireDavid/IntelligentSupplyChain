@@ -66,7 +66,6 @@ function setToken(token: string) {
 function clearToken() {
   localStorage.removeItem("token");
 }
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 

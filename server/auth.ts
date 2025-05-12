@@ -104,17 +104,30 @@ export function setupAuth(app: Express) {
     res.status(200).json({ message: "Logged out (client must delete JWT)" });
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
+  // Updated user route using JWT authentication
+app.get("/api/user", verifyJWT, async (req: Request, res: Response) => {
+  try {
+    // Since verifyJWT middleware adds the user to req, we can safely access it
+    if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     
-    // Mongoose documents need to be converted to a plain object
-    const userObject: { [key: string]: any } = (req.user as any).toObject();
-    // Don't send the password in the response
+    // Find the full user document to ensure we have the most up-to-date information
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Convert to plain object and remove sensitive information
+    const userObject: { [key: string]: any } = user.toObject();
     delete userObject.password;
+    
     res.json(userObject);
-  });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Server error while fetching user" });
+  }
+});
 // Update user profile (requires authentication)
 app.put("/api/user/profile", verifyJWT, async (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
