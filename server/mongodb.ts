@@ -22,11 +22,23 @@ export const connectToMongoDB = async () => {
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true },
   fullName: { type: String, required: true },
   company: { type: String },
-  role: { type: String, default: 'trader' },
-  createdAt: { type: Date, default: Date.now }
+  role: { 
+    type: String, 
+    enum: ["trader", "admin", "superadmin"], 
+    default: "trader" 
+  },
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: { type: Date },
+  isActive: { type: Boolean, default: true },
+  permissions: {
+    canManageUsers: { type: Boolean, default: false },
+    canViewAnalytics: { type: Boolean, default: false },
+    canManageMarketData: { type: Boolean, default: false },
+    canApproveDocuments: { type: Boolean, default: false }
+  }
 });
 
 // Market Data Schema
@@ -62,10 +74,15 @@ const customsDocumentSchema = new mongoose.Schema({
   description: { type: String },
   destination: { type: String, required: true },
   status: { type: String, default: 'pending' },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt: Date,
   clearanceDate: { type: Date },
   progress: { type: Number, default: 0 },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  rejectedAt: Date,
+  comments: { type: String },
 });
 
 // Currency Exchange Rates Schema

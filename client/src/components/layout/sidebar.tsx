@@ -110,16 +110,6 @@ export default function Sidebar() {
           </nav>
           
           <div className="p-4 border-t border-neutral-200">
-            <div className="bg-neutral-50 rounded-lg p-4">
-              <div className="flex items-center">
-                <span className="material-icons text-info mr-3">new_releases</span>
-                <span className="text-sm font-medium">New update available</span>
-              </div>
-              <p className="text-xs text-neutral-600 mt-1">Version 2.4.0 has new features</p>
-              <button className="mt-2 text-xs text-primary font-medium hover:text-primary-600 focus:outline-none">
-                Update now
-              </button>
-            </div>
           </div>
         </div>
       </aside>

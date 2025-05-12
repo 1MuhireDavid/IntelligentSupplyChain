@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -29,8 +31,21 @@ const notificationSchema = z.object({
 
 type NotificationFormValues = z.infer<typeof notificationSchema>;
 
+const passwordFormSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type PasswordFormValues = z.infer<typeof passwordFormSchema>;
+
 export default function Profile() {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, updateUserProfile, updateNotificationSettings, updatePassword } = useAuth();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { toast } = useToast();
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -51,20 +66,110 @@ export default function Profile() {
     },
   });
 
-  const onProfileSubmit = (data: ProfileFormValues) => {
-    console.log("Profile updated:", data);
-    // Would implement API call to update profile
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onProfileSubmit = async (data: ProfileFormValues) => {
+    try {
+      setIsUpdating(true);
+      // Call API to update profile
+      await updateUserProfile(data);
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been successfully updated.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const onNotificationSubmit = (data: NotificationFormValues) => {
-    console.log("Notification settings updated:", data);
-    // Would implement API call to update notification settings
+  const onNotificationSubmit = async (data: NotificationFormValues) => {
+    try {
+      setIsUpdating(true);
+      // Call API to update notification settings
+      await updateNotificationSettings(data);
+      toast({
+        title: "Preferences updated",
+        description: "Your notification preferences have been saved.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update notification preferences. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const onPasswordSubmit = async (data: PasswordFormValues) => {
+    try {
+      setIsUpdating(true);
+      // Call API to update password
+      await updatePassword(data.currentPassword, data.newPassword);
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully changed.",
+        variant: "success",
+      });
+      // Reset form fields after successful update
+      passwordForm.reset({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Password update failed",
+        description: error instanceof Error ? error.message : "Failed to update password. Please ensure your current password is correct.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
+  const handleDeleteAccount = async () => {
+    // This would typically show a confirmation dialog first
+    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      try {
+        // Implement delete account functionality in your auth hook
+        // await deleteAccount();
+        toast({
+          title: "Account deleted",
+          description: "Your account has been successfully deleted.",
+          variant: "success",
+        });
+        // Redirect to login page or home
+      } catch (error) {
+        toast({
+          title: "Delete failed",
+          description: error instanceof Error ? error.message : "Failed to delete account. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+  
   return (
     <div className="h-screen flex flex-col">
       <Header />
@@ -173,7 +278,7 @@ export default function Profile() {
                             <FormItem className="flex items-center justify-between rounded-lg border p-4">
                               <div className="space-y-0.5">
                                 <FormLabel className="text-base">Email Notifications</FormLabel>
-                                <FormDescription>Receive notifications via email</FormDescription>
+                                <p className="text-sm text-neutral-500">Receive notifications via email</p>
                               </div>
                               <FormControl>
                                 <Switch
@@ -192,7 +297,7 @@ export default function Profile() {
                             <FormItem className="flex items-center justify-between rounded-lg border p-4">
                               <div className="space-y-0.5">
                                 <FormLabel className="text-base">Market Price Alerts</FormLabel>
-                                <FormDescription>Get notified about significant market price changes</FormDescription>
+                                <p>Get notified about significant market price changes</p>
                               </div>
                               <FormControl>
                                 <Switch
@@ -211,7 +316,7 @@ export default function Profile() {
                             <FormItem className="flex items-center justify-between rounded-lg border p-4">
                               <div className="space-y-0.5">
                                 <FormLabel className="text-base">Customs Status Updates</FormLabel>
-                                <FormDescription>Receive updates when customs status changes</FormDescription>
+                                <p>Receive updates when customs status changes</p>
                               </div>
                               <FormControl>
                                 <Switch
@@ -230,7 +335,7 @@ export default function Profile() {
                             <FormItem className="flex items-center justify-between rounded-lg border p-4">
                               <div className="space-y-0.5">
                                 <FormLabel className="text-base">Route Optimization Suggestions</FormLabel>
-                                <FormDescription>Get suggestions for optimizing your shipping routes</FormDescription>
+                                <p>Get suggestions for optimizing your shipping routes</p>
                               </div>
                               <FormControl>
                                 <Switch

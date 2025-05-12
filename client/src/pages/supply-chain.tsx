@@ -103,7 +103,7 @@ export default function SupplyChain() {
             ) : (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  <Card>
+                  {/* <Card>
                     <CardHeader>
                       <CardTitle>Global Shipping Routes</CardTitle>
                       <CardDescription>Interactive map of your active shipping routes</CardDescription>
@@ -111,7 +111,7 @@ export default function SupplyChain() {
                     <CardContent>
                       <ShippingMap routes={shippingRoutes} />
                     </CardContent>
-                  </Card>
+                  </Card> */}
                   
                   <Card>
                     <CardHeader>

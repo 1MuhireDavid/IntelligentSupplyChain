@@ -16,12 +16,16 @@ import SupplyChain from "@/pages/supply-chain";
 import CustomsManagement from "@/pages/customs-management";
 import ShippingRoutes from "@/pages/shipping-routes";
 import Profile from "@/pages/profile";
+import AdminDashboard from "./pages/adminPage";
+import CustomersPage from "./pages/Customers";
 
 function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/admin/users" component={CustomersPage} />
       <ProtectedRoute path="/market-intelligence" component={MarketIntelligence} />
       <ProtectedRoute path="/supply-chain" component={SupplyChain} />
       <ProtectedRoute path="/customs-management" component={CustomsManagement} />

@@ -12,10 +12,14 @@ import MarketOpportunities from "@/components/dashboard/market-opportunities";
 import RecentActivities from "@/components/dashboard/recent-activities";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import NewAnalysisModal from "@/components/dashboard/new-analysis-modal";
+import { useState } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
-  
+
+  const [isModalOpen, setModalOpen] = useState(false);
+
   // Fetch shipping routes
   const { data: shippingRoutes, isLoading: loadingRoutes } = useQuery({
     queryKey: ["/api/shipping-routes"],
@@ -46,23 +50,33 @@ export default function HomePage() {
     queryKey: ["/api/currency-exchange-rates"],
   });
 
-  const isLoading = loadingRoutes || loadingCustoms || loadingMarket || loadingActivities || loadingOpportunities || loadingRates;
+  const isLoading =
+    loadingRoutes ||
+    loadingCustoms ||
+    loadingMarket ||
+    loadingActivities ||
+    loadingOpportunities ||
+    loadingRates;
 
   return (
     <div className="h-screen flex flex-col">
       <Header />
-      
+
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        
+
         <main className="flex-1 overflow-y-auto p-4 lg:pl-64 pt-4">
           <div className="container mx-auto">
             {/* Page Header */}
             <div className="mb-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-neutral-800">Dashboard Overview</h1>
-                  <p className="mt-1 text-neutral-600">Real-time insights for your trade operations</p>
+                  <h1 className="text-2xl font-bold text-neutral-800">
+                    Dashboard Overview
+                  </h1>
+                  <p className="mt-1 text-neutral-600">
+                    Real-time insights for your trade operations
+                  </p>
                 </div>
                 <div className="flex mt-4 md:mt-0 space-x-2">
                   <div className="relative">
@@ -72,9 +86,14 @@ export default function HomePage() {
                       <option>Last quarter</option>
                       <option>Last year</option>
                     </select>
-                    <span className="material-icons absolute right-2 top-2 text-neutral-500 pointer-events-none">arrow_drop_down</span>
+                    <span className="material-icons absolute right-2 top-2 text-neutral-500 pointer-events-none">
+                      arrow_drop_down
+                    </span>
                   </div>
-                  <button className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
                     <span className="mr-1">+</span> New Analysis
                   </button>
                 </div>
@@ -89,7 +108,7 @@ export default function HomePage() {
               <>
                 {/* Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  <MetricsCard 
+                  <MetricsCard
                     title="Active Trade Routes"
                     value={shippingRoutes?.length || 0}
                     change={8}
@@ -97,23 +116,29 @@ export default function HomePage() {
                     icon="alt_route"
                     color="primary"
                   />
-                  <MetricsCard 
+                  <MetricsCard
                     title="Pending Shipments"
-                    value={customsDocuments?.filter(doc => doc.status === 'pending').length || 0}
+                    value={
+                      customsDocuments?.filter(
+                        (doc) => doc.status === "pending"
+                      ).length || 0
+                    }
                     change={-3}
                     isPositive={false}
                     icon="local_shipping"
                     color="accent"
                   />
-                  <MetricsCard 
+                  <MetricsCard
                     title="Average Delivery Time"
-                    value={`${calculateAvgDeliveryTime(shippingRoutes) || 4.2} days`}
+                    value={`${
+                      calculateAvgDeliveryTime(shippingRoutes) || 4.2
+                    } days`}
                     change={12}
                     isPositive={true}
                     icon="schedule"
                     color="info"
                   />
-                  <MetricsCard 
+                  <MetricsCard
                     title="Cost Optimization"
                     value="22.5%"
                     change={5}
@@ -126,7 +151,7 @@ export default function HomePage() {
                 {/* Charts and Maps Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   <MarketPriceChart data={marketData} />
-                  <ShippingMap routes={shippingRoutes} />
+                  {/* <ShippingMap routes={shippingRoutes} /> */}
                 </div>
 
                 {/* Supply Chain & Customs Row */}
@@ -150,6 +175,9 @@ export default function HomePage() {
               </>
             )}
           </div>
+          {isModalOpen && (
+            <NewAnalysisModal onClose={() => setModalOpen(false)} />
+          )}
         </main>
       </div>
 

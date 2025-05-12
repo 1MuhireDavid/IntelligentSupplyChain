@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
+import { registerAdminRoutes } from "./admin-routes";
 import { z } from "zod";
 import { 
   MarketData,
@@ -10,6 +11,7 @@ import {
   MarketOpportunity,
   ActivityLog
 } from "./mongodb";
+import { verifyJWT } from "./middleware/jwt-auth";
 
 // Middleware to check if user is authenticated
 const authenticate = (req: Request, res: Response, next: Function) => {
@@ -22,9 +24,11 @@ const authenticate = (req: Request, res: Response, next: Function) => {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  // Register admin routes
+  registerAdminRoutes(app);
 
   // Market Data routes
-  app.get("/api/market-data", authenticate, async (req, res) => {
+  app.get("/api/market-data", verifyJWT, async (req, res) => {
     try {
       const marketDataList = await MarketData.find().sort({ timestamp: -1 });
       res.json(marketDataList);
@@ -33,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/market-data/:id", authenticate, async (req, res) => {
+  app.get("/api/market-data/:id", verifyJWT, async (req, res) => {
     try {
       const marketDataItem = await MarketData.findById(req.params.id);
       
@@ -47,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/market-data/product/:name", authenticate, async (req, res) => {
+  app.get("/api/market-data/product/:name", verifyJWT, async (req, res) => {
     try {
       const name = req.params.name;
       const marketDataList = await MarketData.find({ productName: name }).sort({ timestamp: -1 });
@@ -57,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/market-data", authenticate, async (req, res) => {
+  app.post("/api/market-data", verifyJWT, async (req, res) => {
     try {
       const newMarketData = new MarketData(req.body);
       const result = await newMarketData.save();
@@ -67,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/market-data/:id", authenticate, async (req, res) => {
+  app.put("/api/market-data/:id", verifyJWT, async (req, res) => {
     try {
       const updatedMarketData = await MarketData.findByIdAndUpdate(
         req.params.id,
@@ -86,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shipping Routes endpoints
-  app.get("/api/shipping-routes", authenticate, async (req, res) => {
+  app.get("/api/shipping-routes", verifyJWT, async (req, res) => {
     try {
       const userId = (req.user as any)._id;
       const routes = await ShippingRoute.find({ userId }).sort({ createdAt: -1 });
@@ -96,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/shipping-routes/:id", authenticate, async (req, res) => {
+  app.get("/api/shipping-routes/:id", verifyJWT, async (req, res) => {
     try {
       const route = await ShippingRoute.findById(req.params.id);
       
@@ -115,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/shipping-routes", authenticate, async (req, res) => {
+  app.post("/api/shipping-routes", verifyJWT, async (req, res) => {
     try {
       // Ensure the userId is set to the authenticated user
       const data = { ...req.body, userId: (req.user as any)._id };
@@ -128,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/shipping-routes/:id", authenticate, async (req, res) => {
+  app.put("/api/shipping-routes/:id", verifyJWT, async (req, res) => {
     try {
       const route = await ShippingRoute.findById(req.params.id);
       
@@ -154,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Customs Documents endpoints
-  app.get("/api/customs-documents", authenticate, async (req, res) => {
+  app.get("/api/customs-documents", verifyJWT, async (req, res) => {
     try {
       const userId = (req.user as any)._id;
       const documents = await CustomsDocument.find({ userId }).sort({ createdAt: -1 });
@@ -164,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/customs-documents/:id", authenticate, async (req, res) => {
+  app.get("/api/customs-documents/:id", verifyJWT, async (req, res) => {
     try {
       const document = await CustomsDocument.findById(req.params.id);
       
@@ -183,7 +187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/customs-documents", authenticate, async (req, res) => {
+  app.post("/api/customs-documents", verifyJWT, async (req, res) => {
     try {
       // Ensure the userId is set to the authenticated user
       const data = { ...req.body, userId: (req.user as any)._id };
@@ -196,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/customs-documents/:id", authenticate, async (req, res) => {
+  app.put("/api/customs-documents/:id", verifyJWT, async (req, res) => {
     try {
       const document = await CustomsDocument.findById(req.params.id);
       
@@ -231,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/currency-exchange-rates", authenticate, async (req, res) => {
+  app.post("/api/currency-exchange-rates", verifyJWT, async (req, res) => {
     try {
       const newRate = new CurrencyExchangeRate(req.body);
       const result = await newRate.save();
@@ -241,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/currency-exchange-rates/:id", authenticate, async (req, res) => {
+  app.put("/api/currency-exchange-rates/:id", verifyJWT, async (req, res) => {
     try {
       const updatedRate = await CurrencyExchangeRate.findByIdAndUpdate(
         req.params.id,
@@ -260,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Market Opportunities endpoints
-  app.get("/api/market-opportunities", authenticate, async (req, res) => {
+  app.get("/api/market-opportunities", verifyJWT, async (req, res) => {
     try {
       const opportunities = await MarketOpportunity.find().sort({ createdAt: -1 });
       res.json(opportunities);
@@ -269,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/market-opportunities/:id", authenticate, async (req, res) => {
+  app.get("/api/market-opportunities/:id", verifyJWT, async (req, res) => {
     try {
       const opportunity = await MarketOpportunity.findById(req.params.id);
       
@@ -283,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/market-opportunities", authenticate, async (req, res) => {
+  app.post("/api/market-opportunities", verifyJWT, async (req, res) => {
     try {
       const newOpportunity = new MarketOpportunity(req.body);
       const result = await newOpportunity.save();
@@ -293,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/market-opportunities/:id", authenticate, async (req, res) => {
+  app.put("/api/market-opportunities/:id", verifyJWT, async (req, res) => {
     try {
       const updatedOpportunity = await MarketOpportunity.findByIdAndUpdate(
         req.params.id,
@@ -312,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Activities Log endpoints
-  app.get("/api/activities", authenticate, async (req, res) => {
+  app.get("/api/activities", verifyJWT, async (req, res) => {
     try {
       const userId = (req.user as any)._id;
       const activities = await ActivityLog.find({ userId }).sort({ timestamp: -1 });
@@ -322,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/activities/recent", authenticate, async (req, res) => {
+  app.get("/api/activities/recent", verifyJWT, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
       const activities = await ActivityLog.find()
@@ -334,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/activities", authenticate, async (req, res) => {
+  app.post("/api/activities", verifyJWT, async (req, res) => {
     try {
       // Ensure the userId is set to the authenticated user if not provided
       const data = {

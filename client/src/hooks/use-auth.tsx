@@ -9,15 +9,10 @@ import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-// Exclude password field from User type for client-side usage
 type SafeUser = Omit<User, "password">;
 
-// Extend the insertUserSchema to add validation
-const loginSchema = insertUserSchema.pick({
-  username: true,
-  password: true,
-});
-
+// === Validation Schemas ===
+const loginSchema = insertUserSchema.pick({ username: true, password: true });
 const registerSchema = insertUserSchema.pick({
   username: true,
   password: true,
@@ -28,23 +23,53 @@ const registerSchema = insertUserSchema.pick({
   password: z.string().min(8, "Password must be at least 8 characters"),
   email: z.string().email("Invalid email address"),
 });
+const profileUpdateSchema = z.object({
+  fullName: z.string().min(2),
+  email: z.string().email(),
+  company: z.string().optional(),
+});
+const notificationSettingsSchema = z.object({
+  emailNotifications: z.boolean(),
+  marketAlerts: z.boolean(),
+  customsUpdates: z.boolean(),
+  routeOptimizations: z.boolean(),
+});
+const passwordUpdateSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
 
 type LoginData = z.infer<typeof loginSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
+type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;
+type NotificationSettingsData = z.infer<typeof notificationSettingsSchema>;
+type PasswordUpdateData = z.infer<typeof passwordUpdateSchema>;
 
 type AuthContextType = {
   user: SafeUser | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<SafeUser, Error, LoginData>;
+  loginMutation: UseMutationResult<void, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SafeUser, Error, RegisterData>;
+  registerMutation: UseMutationResult<void, Error, RegisterData>;
+  updateUserProfile: (data: ProfileUpdateData) => Promise<SafeUser>;
+  updateNotificationSettings: (data: NotificationSettingsData) => Promise<NotificationSettingsData>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+function setToken(token: string) {
+  localStorage.setItem("token", token);
+}
+function clearToken() {
+  localStorage.removeItem("token");
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+
   const {
     data: user,
     error,
@@ -57,14 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      const data = await res.json();
+      console.log("Login response:", data);
+      setToken(data.token);
+      queryClient.setQueryData(["/api/user"], data.user);
     },
-    onSuccess: (user: SafeUser) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${user.fullName || user.username}!`,
-      });
+    onSuccess: () => {
+      toast({ title: "Login successful", description: "Welcome back!" });
     },
     onError: (error: Error) => {
       toast({
@@ -78,14 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: async (credentials: RegisterData) => {
       const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
-    },
-    onSuccess: (user: SafeUser) => {
+      const user = await res.json();
       queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Registration successful",
-        description: `Welcome, ${user.fullName || user.username}!`,
-      });
+    },
+    onSuccess: () => {
+      toast({ title: "Account created", description: "Welcome to the platform!" });
     },
     onError: (error: Error) => {
       toast({
@@ -101,15 +122,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      clearToken();
       queryClient.setQueryData(["/api/user"], null);
-      // Also invalidate any user-specific data
-      queryClient.invalidateQueries({ queryKey: ["/api/shipping-routes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/customs-documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
+      queryClient.invalidateQueries();
+      toast({ title: "Logged out", description: "You have been logged out." });
     },
     onError: (error: Error) => {
       toast({
@@ -120,6 +136,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const updateUserProfile = async (data: ProfileUpdateData): Promise<SafeUser> => {
+    const res = await apiRequest("PUT", "/api/user/profile", data);
+    const updated = await res.json();
+    queryClient.setQueryData(["/api/user"], updated);
+    toast({ title: "Profile updated" });
+    return updated;
+  };
+
+  const updateNotificationSettings = async (data: NotificationSettingsData) => {
+    const res = await apiRequest("PUT", "/api/user/notifications", data);
+    const updated = await res.json();
+    queryClient.setQueryData(["/api/user"], (old: SafeUser | null) =>
+      old ? { ...old, notifications: updated } : null
+    );
+    toast({ title: "Notification preferences updated" });
+    return updated;
+  };
+
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    await apiRequest("PUT", "/api/user/password", { currentPassword, newPassword });
+    toast({ title: "Password changed" });
+  };
+
+  const deleteAccount = async () => {
+    await apiRequest("DELETE", "/api/user/account");
+    clearToken();
+    queryClient.setQueryData(["/api/user"], null);
+    queryClient.invalidateQueries();
+    toast({ title: "Account deleted" });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -129,6 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        updateUserProfile,
+        updateNotificationSettings,
+        updatePassword,
+        deleteAccount,
       }}
     >
       {children}
