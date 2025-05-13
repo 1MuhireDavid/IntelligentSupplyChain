@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
-import AdminSidebar from "@/components/layout/admin-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { 
   Loader2, 
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Redirect } from "wouter";
+import Sidebar from "@/components/layout/sidebar";
 
 // Define TypeScript interfaces
 interface User {
@@ -398,7 +398,7 @@ const AdminDashboard: React.FC = () => {
       <div className="flex flex-col min-h-screen bg-gray-50">
         <Header />
         <div className="flex flex-1">
-          <AdminSidebar />
+          <Sidebar />
           <div className="flex justify-center items-center flex-1">
             <Loader2 className="animate-spin text-gray-500" />
           </div>
@@ -411,7 +411,7 @@ const AdminDashboard: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
       <div className="flex flex-1">
-        <AdminSidebar />
+        <Sidebar />
         <main className="flex-1 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">

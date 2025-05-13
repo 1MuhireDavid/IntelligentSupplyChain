@@ -17,6 +17,7 @@ import { useState } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
+  
 
   const [isModalOpen, setModalOpen] = useState(false);
 

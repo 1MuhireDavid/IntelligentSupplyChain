@@ -59,7 +59,7 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
 
   // ✅ Register route
-  app.post("/api/register", async (req: Request, res: Response) => {
+  app.post("/api/register", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { username, email, fullName, password } = req.body;
       const existing = await User.findOne({ username });
@@ -70,19 +70,35 @@ export function setupAuth(app: Express) {
         email,
         fullName,
         password: await hashPassword(password),
-        role: "user",
+        role: "trader",
       });
 
       const user = await newUser.save();
-      const { password: _, ...userWithoutPassword } = user.toObject();
-      return res.status(201).json(userWithoutPassword);
+      
+       // Create JWT token for the new user - similar to login flow
+      const payload = {
+        userId: user._id,
+        role: user.role,
+        username: user.username,
+        fullName: user.fullName,
+      };
+
+      const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: "1d" });
+      
+      // Don't send the password in the response
+      const userObject = user.toObject();
+      const { password: _, ...userWithoutPassword } = userObject;
+      
+      // Return token + user data just like the login endpoint
+      res.status(201).json({ token, user: userWithoutPassword });
     } catch (err) {
       res.status(500).json({ message: "Registration failed", error: err });
+      next(err);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", async (err, user, info) => {
+    passport.authenticate("local", async (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: "Invalid username or password" });
 
@@ -104,17 +120,30 @@ export function setupAuth(app: Express) {
     res.status(200).json({ message: "Logged out (client must delete JWT)" });
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
+  // Updated user route using JWT authentication
+app.get("/api/user", verifyJWT, async (req: Request, res: Response) => {
+  try {
+    // Since verifyJWT middleware adds the user to req, we can safely access it
+    if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     
-    // Mongoose documents need to be converted to a plain object
-    const userObject: { [key: string]: any } = (req.user as any).toObject();
-    // Don't send the password in the response
+    // Find the full user document to ensure we have the most up-to-date information
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Convert to plain object and remove sensitive information
+    const userObject: { [key: string]: any } = user.toObject();
     delete userObject.password;
+    
     res.json(userObject);
-  });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Server error while fetching user" });
+  }
+});
 // Update user profile (requires authentication)
 app.put("/api/user/profile", verifyJWT, async (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {

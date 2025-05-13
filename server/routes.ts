@@ -13,13 +13,6 @@ import {
 } from "./mongodb";
 import { verifyJWT } from "./middleware/jwt-auth";
 
-// Middleware to check if user is authenticated
-const authenticate = (req: Request, res: Response, next: Function) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "Unauthorized" });
-};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes

@@ -12,7 +12,7 @@ export function verifyJWT(req: Request, res: Response, next: NextFunction) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    req.user = decoded; // contains userId and role from /api/login
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(403).json({ message: "Invalid token" });

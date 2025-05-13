@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from "express";
 // Middleware to check if user is authenticated and is an admin
 export const authenticateAdmin = (req: Request, res: Response, next: NextFunction) => {
   const user = req.user as any;
+  console.log("User in authenticateAdmin middleware:", user.role);
   if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
     return res.status(403).json({ message: "Forbidden: Admin access required" });
   }
