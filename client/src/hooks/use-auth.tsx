@@ -38,6 +38,10 @@ const passwordUpdateSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8),
 });
+interface ToggleStatusParams {
+  userId: string;
+  isActive: boolean;
+}
 
 type LoginData = z.infer<typeof loginSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
@@ -55,7 +59,8 @@ type AuthContextType = {
   updateUserProfile: (data: ProfileUpdateData) => Promise<SafeUser>;
   updateNotificationSettings: (data: NotificationSettingsData) => Promise<NotificationSettingsData>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  deleteAccount: () => Promise<void>;
+  deleteAccount: (userId?: string) => Promise<void>;
+  toggleUserStatus: UseMutationResult<SafeUser, Error, ToggleStatusParams>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -82,7 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
       const data = await res.json();
-      console.log("Login response:", data);
       setToken(data.token);
       queryClient.setQueryData(["/api/user"], data.user);
     },
@@ -102,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: RegisterData) => {
       const res = await apiRequest("POST", "/api/register", credentials);
       const user = await res.json();
-      queryClient.setQueryData(["/api/user"], user);
     },
     onSuccess: () => {
       toast({ title: "Account created", description: "Welcome to the platform!" });
@@ -157,15 +160,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiRequest("PUT", "/api/user/password", { currentPassword, newPassword });
     toast({ title: "Password changed" });
   };
-
-  const deleteAccount = async () => {
-    await apiRequest("DELETE", "/api/user/account");
-    clearToken();
-    queryClient.setQueryData(["/api/user"], null);
-    queryClient.invalidateQueries();
-    toast({ title: "Account deleted" });
+  const deleteAccount = async (userId?: string) => {
+    return deleteAccountMutation.mutate(userId);
   };
-
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (userId?: string) => {
+      
+      if (userId) {
+        // Admin deleting another user's account
+        const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+        return response;
+      } else {
+        // User deleting their own account
+        const response = await apiRequest("DELETE", "/api/user/account");
+        return response;
+      }
+    },
+    onSuccess: (_, userId) => {
+      if (userId) {
+        // Admin deleted someone else's account
+        queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+        toast({ title: "Account deleted" });
+      } else {
+        // User deleted their own account
+        clearToken();
+        queryClient.setQueryData(["/api/user"], null);
+        queryClient.invalidateQueries();
+        toast({ title: "Account deleted successfully" });
+      }
+    },
+    onError: (error: Error) => {
+      console.error("Account deletion failed:", error);
+      toast({ 
+        title: "Failed to delete account", 
+        variant: "destructive",
+        description: error.message 
+      });
+    }
+  });
+  // New toggle user status mutation
+    const toggleUserStatus = useMutation({
+    mutationFn: async ({ userId }: ToggleStatusParams) => {
+      const token = localStorage.getItem("token");
+      // Also using relative path here for the mutation
+      const res = await fetch(`/api/admin/users/${userId}/toggle-status`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to update user status: ${res.status} ${res.statusText}`);
+      }
+      
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Status update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
   return (
     <AuthContext.Provider
       value={{
@@ -179,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateNotificationSettings,
         updatePassword,
         deleteAccount,
+        toggleUserStatus,
       }}
     >
       {children}

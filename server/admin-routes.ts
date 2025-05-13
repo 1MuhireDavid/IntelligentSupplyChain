@@ -80,7 +80,7 @@ export function registerAdminRoutes(app: Express) {
       }
       
       // Only superadmins can modify other superadmins
-      if (targetUser.role === "superadmin" && adminUser.role !== "superadmin") {
+      if (targetUser.role === "admin" && adminUser.role !== "admin") {
         return res.status(403).json({ message: "Only superadmins can modify superadmin accounts" });
       }
       
@@ -104,7 +104,7 @@ export function registerAdminRoutes(app: Express) {
       
       // Log the admin action
       const activity = new ActivityLog({
-        userId: adminUser._id,
+        userId: adminUser.userId,
         action: "user_updated",
         details: `Admin updated user: ${updatedUser.username}`,
         timestamp: new Date()
@@ -121,12 +121,65 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+   // Toggle user active status (Admin only)
+  app.patch("/api/admin/users/:id/toggle-status", verifyJWT, authenticateAdmin, async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const adminUser = req.user as any;
+      const { isActive } = req.body;
+      
+      // Special protection for superadmin accounts
+      const targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Only superadmins can modify other superadmins
+      if (targetUser.role === "superadmin" && adminUser.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can modify superadmin accounts" });
+      }
+      
+      // Prevent admins from deactivating themselves
+      if (userId === adminUser.userId.toString() && isActive === false) {
+        return res.status(400).json({ message: "Cannot deactivate your own account" });
+      }
+      
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: { isActive } },
+        { new: true }
+      );
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Log the admin action
+      const activity = new ActivityLog({
+        userId: adminUser.userId,
+        action: "user_status_updated",
+        details: `Admin ${isActive ? 'activated' : 'deactivated'} user: ${updatedUser.username}`,
+        timestamp: new Date()
+      });
+      await activity.save();
+      
+      // Don't send the password in the response
+      const userObject = updatedUser.toObject();
+      const { password, ...userWithoutPassword } = userObject;
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user status", error });
+    }
+  });
+
   // Delete user (Admin only)
   app.delete("/api/admin/users/:id", verifyJWT, authenticateAdmin, async (req, res) => {
     try {
       const userId = req.params.id;
       const adminUser = req.user as any;
-      
+
+
       // Check if the target user exists
       const targetUser = await User.findById(userId);
       if (!targetUser) {
@@ -140,26 +193,51 @@ export function registerAdminRoutes(app: Express) {
       }
       
       // Prevent admins from deleting themselves
-      if (userId === adminUser._id.toString()) {
+      if (userId === adminUser.userId.toString()) {
         return res.status(400).json({ message: "Cannot delete your own account" });
       }
       
-      await User.findByIdAndDelete(userId);
+      // Perform the deletion with proper error handling
+    const deletionResult = await User.findByIdAndDelete(userId);
+    
+    if (!deletionResult) {
+      return res.status(404).json({ message: "User not found or already deleted" });
+    }
+    
       
-      // Log the admin action
+ // Log the admin action
+    try {
       const activity = new ActivityLog({
-        userId: adminUser._id,
+        userId: adminUser.userId,
         action: "user_deleted",
         details: `Admin deleted user: ${targetUser.username}`,
         timestamp: new Date()
       });
       await activity.save();
-      
-      res.json({ message: "User deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete user", error });
+    } catch (logError) {
+      // Don't fail the request if activity logging fails
+      console.error("Failed to create activity log:", logError);
     }
-  });
+    
+    // Return success response
+    return res.status(200).json({ message: "User deleted successfully" });
+    
+  } catch (error) {
+    console.error("Error in delete user route:", error);
+    
+    // Create a safe error object with useful info but without sensitive data
+    const safeError = {
+      message: error.message || "Unknown error",
+      name: error.name || "Error",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+    };
+    
+    res.status(500).json({ 
+      message: "Failed to delete user", 
+      error: safeError 
+    });
+  }
+});
 
   // Update user role (SuperAdmin only)
   app.put("/api/admin/users/:id/role", verifyJWT, authenticateSuperAdmin, async (req, res) => {
@@ -174,7 +252,7 @@ export function registerAdminRoutes(app: Express) {
       }
       
       // Prevent changing own role from superadmin
-      if (userId === adminUser._id.toString() && adminUser.role === "superadmin" && role !== "superadmin") {
+      if (userId === adminUser.userId.toString() && adminUser.role === "superadmin" && role !== "superadmin") {
         return res.status(400).json({ message: "Cannot downgrade your own superadmin role" });
       }
       

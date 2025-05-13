@@ -30,7 +30,6 @@ export default function NewAnalysisModal({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitted data:", formData);
     onClose(); 
   };
 

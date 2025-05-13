@@ -199,7 +199,23 @@ app.put("/api/user/password", verifyJWT, async (req: Request, res: Response, nex
     next(error);
   }
 });  
+
+// Delete user account route (requires authentication)
+app.delete("/api/user/account", verifyJWT, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    const user = await User.findByIdAndDelete(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    res.status(500).json({ message: "Server error while deleting account" });
+  }
+})
 }
-
-
-

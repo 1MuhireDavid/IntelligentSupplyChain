@@ -110,17 +110,6 @@ export default function Sidebar() {
                     <span className="font-medium">User Management</span>
                   </a>
                 </Link>
-
-                <Link href="/admin/company-settings">
-                  <a className={`flex items-center px-4 py-3 ${
-                    location === '/company-settings' 
-                      ? 'text-primary bg-primary-50 border-l-4 border-primary' 
-                      : 'text-neutral-700 hover:bg-neutral-50 border-l-4 border-transparent'
-                  }`}>
-                    <span className="material-icons mr-3">corporate_fare</span>
-                    <span className="font-medium">Company Settings</span>
-                  </a>
-                </Link>
               </>
             )}
             

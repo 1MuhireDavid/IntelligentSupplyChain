@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,14 +28,15 @@ interface User {
 }
 
 const UserManagementPage: React.FC = () => {
-  const { user, updateUserProfile, deleteAccount } = useAuth();
+  const { user, updateUserProfile, deleteAccount, toggleUserStatus } =
+    useAuth();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [isFormOpen, setFormOpen] = useState(false);
   const { toast } = useToast();
   const isLoadingAuth = useAuth().isLoading;
-
+  const queryClient = useQueryClient();
 
   // Loading State
   if (isLoadingAuth) {
@@ -51,15 +52,49 @@ const UserManagementPage: React.FC = () => {
     return <Redirect to="/login" />;
   }
 
-  // Handling user profile save
-  const handleSaveUserProfile = async (data: { fullName: string; email: string; role: string }) => {
-    try {
-      if (!selectedUser) throw new Error("No user selected");
-      const updatedUser = await updateUserProfile(data);
-      toast({ title: "User updated", description: `User ${updatedUser.fullName} details updated.` });
+    const handleSaveUserProfile = async (data: {
+        fullName: string;
+        email: string;
+        role: string;
+        permissions: Permissions;
+      }) => {
+  try {
+    if (!selectedUser) throw new Error("No user selected");
+
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`/api/admin/users/${selectedUser._id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        fullName: data.fullName,
+        email: data.email,
+        role: data.role,
+        permissions: data.permissions,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "Update failed");
+    }
+
+    const updatedUser = await res.json();
+      toast({
+        title: "User updated",
+        description: `User ${updatedUser.fullName} details updated.`,
+      });
       setFormOpen(false); // Close the modal after save
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     } catch (error: any) {
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -67,12 +102,20 @@ const UserManagementPage: React.FC = () => {
   const handleConfirmDelete = async () => {
     try {
       if (selectedUser) {
-        await deleteAccount();
-        toast({ title: "Account deleted", description: `User ${selectedUser.fullName} has been deleted.` });
+        await deleteAccount(selectedUser._id);
+        toast({
+          title: "Account deleted",
+          description: `User ${selectedUser.fullName} has been deleted.`,
+        });
         setConfirmOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       }
     } catch (error: any) {
-      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -88,19 +131,48 @@ const UserManagementPage: React.FC = () => {
     setSelectedUser(user);
     setConfirmOpen(true);
   };
-  const { data: users, isLoading } = useQuery<User[]>({
+    const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/admin/users", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      return res.json();
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/admin/users", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch users: ${res.status} ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        return data as User[];
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        throw error;
+      }
     },
+    staleTime: 60000, // 1 minute
   });
+
+  const handleToggleStatus = (user: User) => {
+    toggleUserStatus.mutate(user, {
+      onSuccess: () => {
+        toast({
+          title: "Status updated",
+          description: `${user.fullName}'s status has been updated.`,
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Update failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -139,7 +211,7 @@ const UserManagementPage: React.FC = () => {
                       <th className="px-4 py-3">Email</th>
                       <th className="px-4 py-3">Role</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Last Login</th>
+                      <th className="px-4 py-3">Created At</th>
                       <th className="px-4 py-3">Actions</th>
                     </tr>
                   </thead>
@@ -153,19 +225,32 @@ const UserManagementPage: React.FC = () => {
                         <td className="px-4 py-2 capitalize">{u.role}</td>
                         <td className="px-4 py-2">
                           <button
-                            className={`inline-flex items-center font-medium ${u.isActive ? "text-green-600" : "text-red-600"}`}
+                            className={`inline-flex items-center font-medium ${
+                              u.isActive ? "text-green-600" : "text-red-600"
+                            }`}
                             onClick={() => handleToggleStatus(u)}
                           >
                             {u.isActive ? (
-                              <><Check className="w-4 h-4 mr-1" /> Active</>
+                              <>
+                                <Check className="w-4 h-4 mr-1" /> Active
+                              </>
                             ) : (
-                              <><X className="w-4 h-4 mr-1" /> Inactive</>
+                              <>
+                                <X className="w-4 h-4 mr-1" /> Inactive
+                              </>
                             )}
                           </button>
                         </td>
-                        <td className="px-4 py-2">{u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "Never"}</td>
+                        <td className="px-4 py-2">
+                          {u.createdAt
+                            ? new Date(u.createdAt).toLocaleString()
+                            : "Never"}
+                        </td>
                         <td className="px-4 py-2 space-x-2">
-                          <button onClick={() => handleEdit(u)} className="text-blue-600 hover:underline text-sm">
+                          <button
+                            onClick={() => handleEdit(u)}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
                             <Pencil className="w-4 h-4 inline" /> Edit
                           </button>
                           <button
