@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
-import AdminSidebar from "@/components/layout/admin-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { 
   Loader2, 

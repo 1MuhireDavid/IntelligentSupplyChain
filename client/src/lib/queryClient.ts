@@ -60,7 +60,7 @@ export const getQueryFn = <T>(options: {
   };
 };
 
-// Global QueryClient with sensible defaults
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
