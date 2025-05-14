@@ -183,17 +183,6 @@ const UserManagementPage: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold">User Management</h1>
-              <button
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center text-sm"
-                onClick={() => {
-                  setSelectedUser(null);
-                  setShowForm(true);
-                  setFormOpen(true); // Open the user form to add a new user
-                }}
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add User
-              </button>
             </div>
 
             {/* Loading or users table */}
